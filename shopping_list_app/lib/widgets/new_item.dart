@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:shopping_list_app/data/categories.dart';
 import 'package:shopping_list_app/models/grocery_item.dart';
+import 'package:http/http.dart' as http;
 
 import '../models/category.dart';
 
@@ -17,15 +20,26 @@ class _NewItemState extends State<NewItem> {
   var _enteredName = '';
   var _selectedCategory = categories[Categories.vegetables]!;
 
-  void _saveItem() {
+  void _saveItem() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-      Navigator.of(context).pop(
-          GroceryItem(id: DateTime.now().toString(),
-              name: _enteredName,
-              quantity: _enteredQuantity,
-              category: _selectedCategory)
-      );
+      final url = Uri.https(
+          'flutter-c5ddc-default-rtdb.firebaseio.com', 'shopping_list.json');
+      final response = await http.post(url,
+          headers: {
+            'Content-type': 'application/json',
+          },
+          body: json.encode({
+            'name': _enteredName,
+            'quantity': _enteredQuantity,
+            'category': _selectedCategory.title
+          }));
+
+      if(!context.mounted) {
+        return;
+      }
+      Navigator.of(context).pop();
+
     }
   }
 
@@ -51,12 +65,8 @@ class _NewItemState extends State<NewItem> {
                 validator: (value) {
                   if (value == null ||
                       value.isEmpty ||
-                      value
-                          .trim()
-                          .length <= 1 ||
-                      value
-                          .trim()
-                          .length > 50) {
+                      value.trim().length <= 1 ||
+                      value.trim().length > 50) {
                     return 'Must be between 1 and 50 characters.';
                   }
                   return null;
@@ -71,7 +81,7 @@ class _NewItemState extends State<NewItem> {
                   Expanded(
                     child: TextFormField(
                       decoration:
-                      const InputDecoration(label: Text("Quantity")),
+                          const InputDecoration(label: Text("Quantity")),
                       initialValue: _enteredQuantity.toString(),
                       keyboardType: TextInputType.number,
                       validator: (value) {
